@@ -36,6 +36,11 @@ class FinetuningParameters:
     gradient_accumulation_steps: int
     max_grad_norm: float
     dev_batches: int
+    use_lora: bool
+    lora_r: int
+    lora_alpha: int
+    lora_dropout: float
+    lora_target_modules: list
 
 
 def read_finetuning_params(config):
@@ -54,6 +59,13 @@ def read_finetuning_params(config):
         gradient_accumulation_steps=params.get("gradient_accumulation_steps", 1),
         max_grad_norm=params.get("max_grad_norm", 1.0),
         dev_batches=params.get("dev_batches", 100),
+        use_lora=params.get("use_lora", False),
+        lora_r=params.get("lora_r", 8),
+        lora_alpha=params.get("lora_alpha", 16),
+        lora_dropout=params.get("lora_dropout", 0.05),
+        lora_target_modules=params.get(
+            "lora_target_modules", ["q_proj", "k_proj", "v_proj", "out_proj"]
+        ),
     )
     return f_params
 

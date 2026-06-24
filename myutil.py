@@ -2,6 +2,7 @@ from configure import USE_CUDA
 import gc
 import sys
 import torch
+from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 from transformers import AutoModelForSeq2SeqLM, AutoConfig
 from transformers import AutoTokenizer
 
@@ -50,7 +51,28 @@ def prepare_model_for_finetuning(ft_params):
             param.requires_grad = False
     else:
         print("--> encoder NOT frozen <--")
+    if ft_params.use_lora:
+        lora_config = LoraConfig(
+            task_type=TaskType.SEQ_2_SEQ_LM,
+            r=ft_params.lora_r,
+            lora_alpha=ft_params.lora_alpha,
+            lora_dropout=ft_params.lora_dropout,
+            target_modules=ft_params.lora_target_modules,
+        )
+        model = get_peft_model(model, lora_config)
+        print(f"--> LoRA ENABLED (r={ft_params.lora_r}, alpha={ft_params.lora_alpha}) <--")
+        model.print_trainable_parameters()
     if USE_CUDA:
         torch.cuda.set_device(0)
         model.cuda()
     return model
+
+
+def merge_lora_checkpoint(experiment_dir, ft_params):
+    """Merges a saved LoRA adapter checkpoint into its base model and
+    overwrites experiment_dir with the merged full model, so it can be
+    loaded downstream with plain AutoModelForSeq2SeqLM.from_pretrained."""
+    base_model = AutoModelForSeq2SeqLM.from_pretrained(ft_params.base_model)
+    model = PeftModel.from_pretrained(base_model, experiment_dir)
+    merged_model = model.merge_and_unload()
+    merged_model.save_pretrained(experiment_dir)

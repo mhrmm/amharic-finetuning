@@ -1,0 +1,52 @@
+{
+    "model_dir": "experiments/en-am-nllb-600M-lora",
+    "finetuning_parameters": {
+        "base_model": "facebook/nllb-200-distilled-600M",
+        "finetune": true,
+        "freeze_encoder": false,
+        "freeze_decoder": false,
+        "report_every": 200,
+        "validate_every": 200,
+        "batch_size": 32,
+        "eval_batch_size": 128,
+        "src_pad_id": 0,
+        "tgt_pad_id": -100,
+        "num_steps": 1000,
+        "use_lora": true,
+        "lora_r": 8,
+        "lora_alpha": 16,
+        "lora_dropout": 0.05,
+        "lora_target_modules": ["q_proj", "k_proj", "v_proj", "out_proj"]
+    },
+    "tokenizers": {
+        "nllb": {
+            "type": "huggingface",
+            "model": "facebook/nllb-200-distilled-600M",
+            "max_length": 192
+        }
+    },
+    "corpora": {
+        "wmt-en": {
+            "lang_code": "eng_Latn",
+            "train": "/mnt/storage/data/am-en/afridoc/train.health.en",
+            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.en",
+            "test": "data/afridoc/reorganized/validation.health.en",
+            "encipherment": "0",
+            "tokenizer": "nllb"
+        },
+        "wmt-am": {
+            "lang_code": "amh_Ethi",
+            "train": "/mnt/storage/data/am-en/afridoc/train.health.am",
+            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.am",
+            "test": "data/afridoc/reorganized/validation.health.am",
+            "encipherment": "0",
+            "tokenizer": "nllb"
+        }
+    },
+    "bitexts": [
+        {
+            "src": "wmt-en",
+            "tgt": "wmt-am"
+        }
+    ]
+}

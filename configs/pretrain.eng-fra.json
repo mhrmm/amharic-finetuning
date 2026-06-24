@@ -1,0 +1,33 @@
+{
+    "model_dir": "experiments/eng-fra-pretrained",
+    "corpora": {
+        "eng_Latn": {
+            "train": "/mnt/storage/hopkins/data/french/wmt1m/prebatched/train.en",
+            "dev": "/mnt/storage/hopkins/data/french/wmt1m/prebatched/dev.en",
+            "test": "/mnt/storage/hopkins/data/french/wmt1m/prebatched/test.en",
+            "permutation": 0
+        },
+        "fra_Latn": {
+            "train": "/mnt/storage/hopkins/data/french/wmt1m/prebatched/train.fr",
+            "dev": "/mnt/storage/hopkins/data/french/wmt1m/prebatched/dev.fr",
+            "test": "/mnt/storage/hopkins/data/french/wmt1m/prebatched/test.fr",
+            "permutation": 0
+        }
+    },
+    "bitexts": [
+        {
+            "src": "eng_Latn",
+            "tgt": "fra_Latn",
+            "train_lines": [
+                0,
+                999936
+            ]
+        }
+    ],
+    "finetuning_parameters": {
+        "base_model": "facebook/nllb-200-distilled-600M",
+        "finetune": false,
+        "batch_size": 64,
+        "num_steps": 200000
+    }
+}

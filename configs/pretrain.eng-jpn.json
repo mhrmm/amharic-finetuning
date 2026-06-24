@@ -1,0 +1,40 @@
+{
+    "model_dir": "experiments/eng-jpn-pretrained",
+    "corpora": {
+        "jparacrawl": {
+            "eng": {
+                "lang_code": "eng_Latn",
+                "train": "/mnt/storage/hopkins/data/jparacrawl/prebatched/train.en",
+                "dev": "/mnt/storage/hopkins/data/jparacrawl/prebatched/dev.en",
+                "test": "/mnt/storage/hopkins/data/jparacrawl/prebatched/test.en",
+                "permutation": 0
+            },
+            "jpn": {
+                "lang_code": "jpn_Jpan",
+                "train": "/mnt/storage/hopkins/data/jparacrawl/prebatched/train.jp",
+                "dev": "/mnt/storage/hopkins/data/jparacrawl/prebatched/dev.jp",
+                "test": "/mnt/storage/hopkins/data/jparacrawl/prebatched/test.jp",
+                "permutation": 0
+            }
+        }
+    },
+    "bitexts": [
+        {
+            "corpus": "jparacrawl",
+            "src": "eng",
+            "tgt": "jpn",
+            "train_lines": [
+                0,
+                999936
+            ]
+        }
+    ],
+    "finetuning_parameters": {
+        "base_model": "facebook/nllb-200-distilled-600M",
+        "finetune": false,
+        "freeze_encoder": false,
+        "freeze_decoder": false,
+        "batch_size": 64,
+        "num_steps": 200000
+    }
+}

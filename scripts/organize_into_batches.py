@@ -32,7 +32,7 @@ def reorganize(batch_size, root_dir, split, output_dir):
         If `output_dir` already exists.
     """
 
-    os.mkdir(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     files = list(root_dir.glob(f"{split}.*"))
     model_name = "facebook/nllb-200-distilled-600M"
     tokenizer = AutoTokenizer.from_pretrained(model_name)

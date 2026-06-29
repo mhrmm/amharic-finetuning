@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from myutil import cleanup
 from myutil import logger
+from myutil import merge_lora_checkpoint
 from myutil import prepare_model_for_finetuning
 import numpy as np
 import os
@@ -184,6 +185,8 @@ def main():
         experiment_dir,
         ft_params,
     )
+    if ft_params.use_lora:
+        merge_lora_checkpoint(experiment_dir, ft_params)
     evaluate_experiment(experiment_dir)
 
 

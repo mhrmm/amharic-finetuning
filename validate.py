@@ -148,7 +148,7 @@ def run_evaluation(bitexts, model_name_or_path, out_dir, suffix=""):
     for key in translations:
         scores[key] = evaluate_translations(translations[key], references[key])
     with open(Path(out_dir) / f"scores{suffix}.json", "w") as writer:
-        json.dump(scores, writer)
+        json.dump(scores, writer, indent=2, ensure_ascii=False)
     logger("...scoring complete.")
 
 

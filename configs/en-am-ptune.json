@@ -1,10 +1,8 @@
 {
-    "model_dir": "experiments/en-am-nllb-3.3B-lora",
+    "model_dir": "experiments/en-am-nllb-3.3B-ptune",
     "finetuning_parameters": {
         "base_model": "facebook/nllb-200-3.3B",
         "init_w_pretrained_weights": true,
-        "freeze_encoder": false,
-        "freeze_decoder": false,
         "report_every": 200,
         "validate_every": 200,
         "batch_size": 8,
@@ -12,16 +10,10 @@
         "src_pad_id": 0,
         "tgt_pad_id": -100,
         "num_steps": 6000,
-        "use_lora": true,
-        "lora_r": 8,
-        "lora_alpha": 16,
-        "lora_dropout": 0.05,
-        "lora_target_modules": [
-            "q_proj",
-            "k_proj",
-            "v_proj",
-            "out_proj"
-        ]
+        "use_prefix_tuning": true,
+        "prefix_num_virtual_tokens": 30,
+        "prefix_encoder_hidden_size": 512,
+        "prefix_projection": true
     },
     "tokenizers": {
         "nllb": {
@@ -33,17 +25,17 @@
     "corpora": {
         "wmt-en": {
             "lang_code": "eng_Latn",
-            "train": "/mnt/storage/data/am-en/afridoc/train.health.en",
-            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.en",
-            "test": "data/afridoc/reorganized/validation.health.en",
+            "train": "/mnt/storage/data/am-en/afridoc/health/train.en",
+            "dev": "/mnt/storage/data/am-en/afridoc/health/validation.en",
+            "test": "/mnt/storage/data/am-en/afridoc/health/validation.en",
             "encipherment": "0",
             "tokenizer": "nllb"
         },
         "wmt-am": {
             "lang_code": "amh_Ethi",
-            "train": "/mnt/storage/data/am-en/afridoc/train.health.am",
-            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.am",
-            "test": "data/afridoc/reorganized/validation.health.am",
+            "train": "/mnt/storage/data/am-en/afridoc/health/train.am",
+            "dev": "/mnt/storage/data/am-en/afridoc/health/validation.am",
+            "test": "/mnt/storage/data/am-en/afridoc/health/validation.am",
             "encipherment": "0",
             "tokenizer": "nllb"
         }

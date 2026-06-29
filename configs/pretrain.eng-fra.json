@@ -26,7 +26,7 @@
     ],
     "finetuning_parameters": {
         "base_model": "facebook/nllb-200-distilled-600M",
-        "finetune": false,
+        "init_w_pretrained_weights": false,
         "batch_size": 64,
         "num_steps": 200000
     }

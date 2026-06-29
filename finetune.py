@@ -187,6 +187,8 @@ def main():
     )
     if ft_params.use_lora:
         merge_lora_checkpoint(experiment_dir, ft_params)
+    # prefix tuning adapters are saved as PEFT adapters and cannot be merged
+    # into base model weights; load_model_for_inference handles them at eval time
     evaluate_experiment(experiment_dir)
 
 

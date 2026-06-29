@@ -4,7 +4,7 @@ from configure import create_bitexts_from_experiment_dir
 from configure import USE_CUDA
 import evaluate
 import json
-from myutil import logger
+from myutil import load_model_for_inference, logger
 from pathlib import Path
 from transformers import AutoModelForSeq2SeqLM
 from tqdm import tqdm
@@ -117,7 +117,7 @@ def run_evaluation(bitexts, model_name_or_path, out_dir, suffix=""):
     """Translates and scores a model's test-set output, writing results into out_dir."""
     logger(f"Initializing model: {model_name_or_path}")
     use_fp16 = torch.cuda.is_available()
-    model = AutoModelForSeq2SeqLM.from_pretrained(
+    model = load_model_for_inference(
         model_name_or_path, torch_dtype=torch.float16 if use_fp16 else torch.float32
     )
     if USE_CUDA:

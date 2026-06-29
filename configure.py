@@ -41,6 +41,10 @@ class FinetuningParameters:
     lora_alpha: int
     lora_dropout: float
     lora_target_modules: list
+    use_prefix_tuning: bool
+    prefix_num_virtual_tokens: int
+    prefix_encoder_hidden_size: int
+    prefix_projection: bool
 
 
 def read_finetuning_params(config):
@@ -48,7 +52,7 @@ def read_finetuning_params(config):
     params = config["finetuning_parameters"]
     f_params = FinetuningParameters(
         base_model=params["base_model"],
-        should_finetune=params.get("finetune", True),
+        should_finetune=params.get("init_w_pretrained_weights", True),
         report_every=params.get("report_every", 500),
         validate_every=params.get("validate_every", 500),
         patience=params.get("patience", 1000000000),
@@ -66,6 +70,10 @@ def read_finetuning_params(config):
         lora_target_modules=params.get(
             "lora_target_modules", ["q_proj", "k_proj", "v_proj", "out_proj"]
         ),
+        use_prefix_tuning=params.get("use_prefix_tuning", False),
+        prefix_num_virtual_tokens=params.get("prefix_num_virtual_tokens", 30),
+        prefix_encoder_hidden_size=params.get("prefix_encoder_hidden_size", 512),
+        prefix_projection=params.get("prefix_projection", True),
     )
     return f_params
 

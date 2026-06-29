@@ -5,4 +5,4 @@
 #SBATCH -o logs/log_%j.out
 #SBATCH -e logs/log_%j.err
 #SBATCH --gres=gpu:1
-python scripts/translate_corpus.py --model facebook/nllb-200-distilled-600M --input ch2.jsonl --src-lang eng_Latn --tgt-lang amh_Ethi --output ch2.mt.jsonl
+python scripts/translate_corpus.py --model facebook/nllb-200-distilled-600M --input /mnt/storage/data/am-en/afridoc/health/validation.en --src-lang eng_Latn --tgt-lang amh_Ethi

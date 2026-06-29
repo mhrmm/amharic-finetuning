@@ -1,22 +1,22 @@
 {
-    "model_dir": "experiments/en-am-nllb-600M",
+    "model_dir": "experiments/en-am-nllb-1.3B",
     "finetuning_parameters": {
-        "base_model": "facebook/nllb-200-distilled-600M",
+        "base_model": "facebook/nllb-200-distilled-1.3B",
         "finetune": true,
         "freeze_encoder": false,
         "freeze_decoder": false,
-        "report_every": 200,
-        "validate_every": 200,
-        "batch_size": 32,
-        "eval_batch_size": 128,
+        "report_every": 20,
+        "validate_every": 20,
+        "batch_size": 16,
+        "eval_batch_size": 16,
         "src_pad_id": 0,
         "tgt_pad_id": -100,
-        "num_steps": 1000
+        "num_steps": 1500
     },
     "tokenizers": {
         "nllb": {
             "type": "huggingface",
-            "model": "facebook/nllb-200-distilled-600M",
+            "model": "facebook/nllb-200-distilled-1.3B",
             "max_length": 192
         }
     },

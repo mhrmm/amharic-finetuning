@@ -1,27 +1,32 @@
 {
-    "model_dir": "experiments/en-am-nllb-600M-lora",
+    "model_dir": "experiments/en-am-nllb-3.3B-lora",
     "finetuning_parameters": {
-        "base_model": "facebook/nllb-200-distilled-600M",
+        "base_model": "facebook/nllb-200-3.3B",
         "finetune": true,
         "freeze_encoder": false,
         "freeze_decoder": false,
         "report_every": 200,
         "validate_every": 200,
-        "batch_size": 32,
-        "eval_batch_size": 128,
+        "batch_size": 8,
+        "eval_batch_size": 8,
         "src_pad_id": 0,
         "tgt_pad_id": -100,
-        "num_steps": 1000,
+        "num_steps": 6000,
         "use_lora": true,
         "lora_r": 8,
         "lora_alpha": 16,
         "lora_dropout": 0.05,
-        "lora_target_modules": ["q_proj", "k_proj", "v_proj", "out_proj"]
+        "lora_target_modules": [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "out_proj"
+        ]
     },
     "tokenizers": {
         "nllb": {
             "type": "huggingface",
-            "model": "facebook/nllb-200-distilled-600M",
+            "model": "facebook/nllb-200-3.3B",
             "max_length": 192
         }
     },

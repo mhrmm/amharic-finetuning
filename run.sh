@@ -6,4 +6,3 @@
 #SBATCH -e logs/log_%j.err
 #SBATCH --gres=gpu:1
 python finetune.py --config configs/en-am-lora.json
-#python scripts/translate_corpus.py --model facebook/nllb-200-distilled-600M --input ch2.jsonl --src-lang eng_Latn --tgt-lang amh_Ethi --output ch2.mt.jsonl

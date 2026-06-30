@@ -6,7 +6,6 @@ import evaluate
 import json
 from myutil import load_model_for_inference, logger
 from pathlib import Path
-from transformers import AutoModelForSeq2SeqLM
 from tqdm import tqdm
 import torch
 
@@ -155,8 +154,8 @@ def run_evaluation(bitexts, model_name_or_path, out_dir, suffix=""):
 def evaluate_experiment(experiment_dir, model_name=None, eval_batch_size=None):
     """Evaluates a finetuning experiment. By default, evaluates the experiment's
     own finetuned checkpoint; pass model_name to instead evaluate some other
-    HuggingFace model (e.g. the un-finetuned base model) against the same test
-    data, writing its outputs alongside the experiment's under a model-specific
+    model (e.g. the un-finetuned base model) against the same test data,
+    writing its outputs alongside the experiment's under a model-specific
     suffix so they don't clobber the experiment's own results."""
     bitexts = create_bitexts_from_experiment_dir(
         experiment_dir, eval_batch_size=eval_batch_size

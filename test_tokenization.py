@@ -1,44 +1,54 @@
 import unittest
-from tokenization import NllbTokenizer, ByteTokenizer
+from tokenization import SentencePieceTokenizer, ByteTokenizer
 from torch import tensor
 
 
 class TestTokenization(unittest.TestCase):
 
+    @unittest.skip("NllbTokenizer removed — requires HuggingFace transformers")
     def test_nllb_tokenizer1(self):
-        with open("test_files/lang1.txt") as reader:
-            lines = [line.strip() for line in reader.readlines()]
-        tokenizer = NllbTokenizer("600M")
-        tokens = tokenizer(lines[:3], lang_code="eng_Latn")
-        expected_lang1_token_ids = [
-            [256047, 1617, 7875, 228, 55501, 349, 227879, 248075, 2],
-            [256047, 11873, 272, 22665, 9, 28487, 248075, 2, 1],
-            [256047, 13710, 18379, 43583, 2299, 248075, 2, 1, 1],
-        ]
-        self.assertEqual(tokens, expected_lang1_token_ids)
+        pass
 
+    @unittest.skip("NllbTokenizer removed — requires HuggingFace transformers")
     def test_nllb_tokenizer2(self):
-        with open("test_files/lang1.txt") as reader:
-            lines = [line.strip() for line in reader.readlines()]
-        tokenizer = NllbTokenizer("600M", max_length=8)
-        tokens = tokenizer(lines[:3], lang_code="eng_Latn")
-        expected_lang1_token_ids = [
-            [256047, 1617, 7875, 228, 55501, 349, 227879, 2],
-            [256047, 11873, 272, 22665, 9, 28487, 248075, 2],
-            [256047, 13710, 18379, 43583, 2299, 248075, 2, 1],
-        ]
-        self.assertEqual(tokens, expected_lang1_token_ids)
+        pass
 
+    @unittest.skip("NllbTokenizer removed — requires HuggingFace transformers")
     def test_hf_tokenizer_properties(self):
-        tokenizer = NllbTokenizer("1.3B", max_length=8)
-        self.assertEqual(len(tokenizer), 256204)
-        special_tokens = tokenizer.get_special_tokens()
-        self.assertEqual(len(special_tokens), 207)
-        self.assertEqual(special_tokens["<s>"], 0)
-        self.assertEqual(special_tokens["<pad>"], 1)
-        self.assertEqual(special_tokens["</s>"], 2)
-        self.assertEqual(special_tokens["<unk>"], 3)
-        self.assertEqual(special_tokens["<mask>"], 256203)
+        pass
+
+    def test_byte_tokenizer_encodes(self):
+        tok = ByteTokenizer(max_length=20)
+        result = tok("hi", lang_code="lang_Lang")
+        # [lang_Lang id] + byte ids + [</s> id]
+        self.assertEqual(result[0], tok.get_special_tokens()["lang_Lang"])
+        self.assertEqual(result[-1], tok.get_special_tokens()["</s>"])
+        # 'hi' = bytes 104, 105 → ids 104+3, 105+3
+        self.assertEqual(result[1], 104 + len(tok.get_special_tokens()))
+        self.assertEqual(result[2], 105 + len(tok.get_special_tokens()))
+
+    def test_byte_tokenizer_truncates(self):
+        tok = ByteTokenizer(max_length=5)
+        result = tok("hello world", lang_code="lang_Lang")
+        self.assertLessEqual(len(result), 5)
+
+    def test_byte_tokenizer_len(self):
+        tok = ByteTokenizer()
+        self.assertEqual(len(tok), 256 + 3)  # 256 bytes + 3 special tokens
+
+    def test_byte_tokenizer_special_tokens(self):
+        tok = ByteTokenizer()
+        st = tok.get_special_tokens()
+        self.assertIn("<pad>", st)
+        self.assertIn("</s>", st)
+        self.assertIn("lang_Lang", st)
+
+    @unittest.skip("requires a trained SentencePiece model file")
+    def test_sentencepiece_tokenizer(self):
+        tok = SentencePieceTokenizer("path/to/spm.model")
+        result = tok("hello", lang_code="eng_Latn")
+        self.assertIsInstance(result, list)
+
 
 if __name__ == "__main__":
     unittest.main()

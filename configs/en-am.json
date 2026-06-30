@@ -9,31 +9,38 @@
         "validate_every": 20,
         "batch_size": 16,
         "eval_batch_size": 16,
-        "src_pad_id": 0,
+        "src_pad_id": 1,
         "tgt_pad_id": -100,
         "num_steps": 1500
     },
     "tokenizers": {
         "nllb": {
-            "type": "huggingface",
-            "model": "facebook/nllb-200-distilled-1.3B",
-            "max_length": 192
+            "type": "sentencepiece",
+            "model": "/mnt/storage/hopkins/hf-cache/hub/models--facebook--nllb-200-distilled-1.3B/snapshots/7be3e24664b38ce1cac29b8aeed6911aa0cf0576/sentencepiece.bpe.model",
+            "max_length": 192,
+            "vocab_offset": 1,
+            "special_tokens": {
+                "<pad>": 1,
+                "</s>": 2,
+                "eng_Latn": 256047,
+                "amh_Ethi": 256009
+            }
         }
     },
     "corpora": {
         "wmt-en": {
             "lang_code": "eng_Latn",
-            "train": "/mnt/storage/data/am-en/afridoc/train.health.en",
-            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.en",
-            "test": "data/afridoc/reorganized/validation.health.en",
+            "train": "/mnt/storage/data/am-en/afridoc/health/train.en",
+            "dev": "/mnt/storage/data/am-en/afridoc/health/validation.en",
+            "test": "/mnt/storage/data/am-en/afridoc/health/validation.en",
             "encipherment": "0",
             "tokenizer": "nllb"
         },
         "wmt-am": {
             "lang_code": "amh_Ethi",
-            "train": "/mnt/storage/data/am-en/afridoc/train.health.am",
-            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.am",
-            "test": "data/afridoc/reorganized/validation.health.am",
+            "train": "/mnt/storage/data/am-en/afridoc/health/train.am",
+            "dev": "/mnt/storage/data/am-en/afridoc/health/validation.am",
+            "test": "/mnt/storage/data/am-en/afridoc/health/validation.am",
             "encipherment": "0",
             "tokenizer": "nllb"
         }

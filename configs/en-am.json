@@ -16,7 +16,7 @@
     "tokenizers": {
         "nllb": {
             "type": "sentencepiece",
-            "model": "/mnt/storage/hopkins/hf-cache/hub/models--facebook--nllb-200-distilled-1.3B/snapshots/7be3e24664b38ce1cac29b8aeed6911aa0cf0576/sentencepiece.bpe.model",
+            "model": "/mnt/storage/models/nllb-200/sentencepiece.bpe.model",
             "max_length": 192,
             "vocab_offset": 1,
             "special_tokens": {

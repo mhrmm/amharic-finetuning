@@ -6,9 +6,9 @@ from pathlib import Path
 import sys
 import torch
 import torch.nn as nn
-from lora import apply_lora, merge_lora, LoRALinear
+from lora import apply_lora, merge_lora
 from model import Seq2SeqConfig, Seq2SeqTransformer
-import nllb as _nllb
+import nllb
 
 
 def logger(s, to_stderr=False):
@@ -31,7 +31,9 @@ def _print_trainable(model):
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
     pct = 100.0 * trainable / total if total else 0.0
-    print(f"trainable params: {trainable:,} || all params: {total:,} || trainable%: {pct:.4f}")
+    print(
+        f"trainable params: {trainable:,} || all params: {total:,} || trainable%: {pct:.4f}"
+    )
 
 
 class PrefixTuning(nn.Module):
@@ -50,7 +52,9 @@ class PrefixTuning(nn.Module):
     - HuggingFace NLLB / M2M100 (optional transformers dependency)
     """
 
-    def __init__(self, model, num_virtual_tokens, encoder_hidden_size, prefix_projection):
+    def __init__(
+        self, model, num_virtual_tokens, encoder_hidden_size, prefix_projection
+    ):
         super().__init__()
         self.base_model = model
         self.num_virtual_tokens = num_virtual_tokens
@@ -108,16 +112,25 @@ class PrefixTuning(nn.Module):
         encoder = self.base_model.get_encoder()
 
         token_embeds = encoder.embed_tokens(input_ids)
-        prefix_embeds = self._enc_prefix_vectors(batch_size, token_embeds.dtype, input_ids.device)
+        # HF's embed_tokens is M2M100ScaledWordEmbedding (scale baked in); our
+        # encoder's is a plain nn.Embedding with a separate embed_scale attr.
+        token_embeds = token_embeds * getattr(encoder, "embed_scale", 1.0)
+        prefix_embeds = self._enc_prefix_vectors(
+            batch_size, token_embeds.dtype, input_ids.device
+        )
         inputs_embeds = torch.cat([prefix_embeds, token_embeds], dim=1)
 
         prefix_mask = torch.ones(
-            batch_size, self.num_virtual_tokens,
-            dtype=attention_mask.dtype, device=attention_mask.device,
+            batch_size,
+            self.num_virtual_tokens,
+            dtype=attention_mask.dtype,
+            device=attention_mask.device,
         )
         extended_mask = torch.cat([prefix_mask, attention_mask], dim=1)
 
-        encoder_outputs = encoder(inputs_embeds=inputs_embeds, attention_mask=extended_mask)
+        encoder_outputs = encoder(
+            inputs_embeds=inputs_embeds, attention_mask=extended_mask
+        )
         return encoder_outputs, extended_mask
 
     # ------------------------------------------------------------------
@@ -129,7 +142,9 @@ class PrefixTuning(nn.Module):
         return next(self.base_model.parameters()).device
 
     def forward(self, input_ids, attention_mask, **kwargs):
-        encoder_outputs, extended_mask = self._encode_with_prefix(input_ids, attention_mask)
+        encoder_outputs, extended_mask = self._encode_with_prefix(
+            input_ids, attention_mask
+        )
         batch_size = input_ids.shape[0]
         dtype = encoder_outputs[0].dtype
 
@@ -137,8 +152,10 @@ class PrefixTuning(nn.Module):
         extended_memory = torch.cat([dec_prefix, encoder_outputs[0]], dim=1)
 
         dec_prefix_mask = torch.ones(
-            batch_size, self.num_virtual_tokens,
-            dtype=extended_mask.dtype, device=extended_mask.device,
+            batch_size,
+            self.num_virtual_tokens,
+            dtype=extended_mask.dtype,
+            device=extended_mask.device,
         )
         extended_cross_mask = torch.cat([dec_prefix_mask, extended_mask], dim=1)
 
@@ -150,7 +167,9 @@ class PrefixTuning(nn.Module):
         )
 
     def generate(self, input_ids, attention_mask, **kwargs):
-        encoder_outputs, extended_mask = self._encode_with_prefix(input_ids, attention_mask)
+        encoder_outputs, extended_mask = self._encode_with_prefix(
+            input_ids, attention_mask
+        )
         batch_size = input_ids.shape[0]
         dtype = encoder_outputs[0].dtype
 
@@ -158,8 +177,10 @@ class PrefixTuning(nn.Module):
         extended_memory = torch.cat([dec_prefix, encoder_outputs[0]], dim=1)
 
         dec_prefix_mask = torch.ones(
-            batch_size, self.num_virtual_tokens,
-            dtype=extended_mask.dtype, device=extended_mask.device,
+            batch_size,
+            self.num_virtual_tokens,
+            dtype=extended_mask.dtype,
+            device=extended_mask.device,
         )
         extended_cross_mask = torch.cat([dec_prefix_mask, extended_mask], dim=1)
 
@@ -177,12 +198,19 @@ class PrefixTuning(nn.Module):
         Also saves enough information to reconstruct the base model on load.
         """
         os.makedirs(save_path, exist_ok=True)
-        prefix_state = {k: v for k, v in self.state_dict().items()
-                        if not k.startswith("base_model.")}
+        prefix_state = {
+            k: v
+            for k, v in self.state_dict().items()
+            if not k.startswith("base_model.")
+        }
         torch.save(prefix_state, os.path.join(save_path, "prefix_tuning_weights.pt"))
 
         base_cfg = self.base_model.config
-        if hasattr(base_cfg, 'save'):
+        if getattr(base_cfg, "model_type", "") == "m2m_100":
+            # Pure-PyTorch M2M100 — record the source path, don't overwrite config.json
+            base_model_format = "huggingface"
+            base_model_id = base_cfg._name_or_path
+        elif hasattr(base_cfg, "save"):
             # Our Seq2SeqTransformer
             base_cfg.save(save_path)
             base_model_format = "seq2seq_transformer"
@@ -218,11 +246,12 @@ class PrefixTuning(nn.Module):
 # Model preparation
 # ---------------------------------------------------------------------------
 
+
 def prepare_model_for_finetuning(ft_params):
-    use_hf = _nllb.is_hf_checkpoint(ft_params.base_model)
+    use_hf = nllb.is_hf_checkpoint(ft_params.base_model)
 
     if use_hf:
-        model = _nllb.load_for_finetuning(ft_params.base_model)
+        model = nllb.load_for_finetuning(ft_params.base_model)
         print(f"loaded NLLB/HF pretrained model from {ft_params.base_model}")
     elif ft_params.should_finetune:
         model = Seq2SeqTransformer.from_pretrained(ft_params.base_model)
@@ -254,9 +283,17 @@ def prepare_model_for_finetuning(ft_params):
             ft_params.lora_dropout,
             ft_params.lora_target_modules,
         )
+        # Freeze everything that isn't a LoRA matrix so that patch_lora_save
+        # captures a complete and consistent checkpoint (only lora_A / lora_B
+        # are trained, only lora_A / lora_B need to be saved).
+        for name, param in model.named_parameters():
+            if "lora_" not in name:
+                param.requires_grad = False
         if use_hf:
-            _nllb.patch_lora_save(model, ft_params.base_model)
-        print(f"--> LoRA ENABLED (r={ft_params.lora_r}, alpha={ft_params.lora_alpha}) <--")
+            nllb.patch_lora_save(model, ft_params.base_model)
+        print(
+            f"--> LoRA ENABLED (r={ft_params.lora_r}, alpha={ft_params.lora_alpha}) <--"
+        )
         _print_trainable(model)
 
     if ft_params.use_prefix_tuning:
@@ -283,7 +320,7 @@ def merge_lora_checkpoint(experiment_dir, ft_params):
     """Merge the LoRA adapter into base weights and resave as a clean checkpoint."""
     if (Path(experiment_dir) / "hf_base_model.json").exists():
         # NLLB + LoRA path
-        _nllb.merge_lora_and_save(experiment_dir, ft_params)
+        nllb.merge_lora_and_save(experiment_dir, ft_params)
     else:
         # Our Seq2SeqTransformer + LoRA path
         config = Seq2SeqConfig.load(experiment_dir)
@@ -296,7 +333,9 @@ def merge_lora_checkpoint(experiment_dir, ft_params):
             ft_params.lora_target_modules,
         )
         state = torch.load(
-            os.path.join(experiment_dir, "model.pt"), map_location="cpu", weights_only=True
+            os.path.join(experiment_dir, "model.pt"),
+            map_location="cpu",
+            weights_only=True,
         )
         model.load_state_dict(state)
         merge_lora(model)
@@ -321,7 +360,7 @@ def load_model_for_inference(model_path, torch_dtype=None):
 
         base_fmt = pt_cfg.get("base_model_format", "seq2seq_transformer")
         if base_fmt == "huggingface":
-            base_model = _nllb.load_for_inference(
+            base_model = nllb.load_for_inference(
                 pt_cfg["base_model_name_or_path"], torch_dtype=torch_dtype
             )
         else:
@@ -344,7 +383,7 @@ def load_model_for_inference(model_path, torch_dtype=None):
             model = model.to(torch_dtype)
         return model
 
-    if _nllb.is_hf_checkpoint(model_path):
-        return _nllb.load_for_inference(model_path, torch_dtype=torch_dtype)
+    if nllb.is_hf_checkpoint(model_path):
+        return nllb.load_for_inference(model_path, torch_dtype=torch_dtype)
 
     return Seq2SeqTransformer.from_pretrained(model_path, **dtype_kwargs)

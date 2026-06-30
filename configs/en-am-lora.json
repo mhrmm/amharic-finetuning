@@ -1,7 +1,7 @@
 {
-    "model_dir": "experiments/en-am-nllb-3.3B-lora",
+    "model_dir": "experiments/en-am-nllb-1.3B-lora",
     "finetuning_parameters": {
-        "base_model": "facebook/nllb-200-3.3B",
+        "base_model": "facebook/nllb-200-distilled-1.3B",
         "init_w_pretrained_weights": true,
         "freeze_encoder": false,
         "freeze_decoder": false,
@@ -25,25 +25,32 @@
     },
     "tokenizers": {
         "nllb": {
-            "type": "huggingface",
-            "model": "facebook/nllb-200-3.3B",
-            "max_length": 192
+            "type": "sentencepiece",
+            "model": "/mnt/storage/models/nllb-200/sentencepiece.bpe.model",
+            "max_length": 192,
+            "vocab_offset": 1,
+            "special_tokens": {
+                "<pad>": 1,
+                "</s>": 2,
+                "eng_Latn": 256047,
+                "amh_Ethi": 256009
+            }
         }
     },
     "corpora": {
         "wmt-en": {
             "lang_code": "eng_Latn",
-            "train": "/mnt/storage/data/am-en/afridoc/train.health.en",
-            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.en",
-            "test": "data/afridoc/reorganized/validation.health.en",
+            "train": "/mnt/storage/data/am-en/afridoc/health/train.en",
+            "dev": "/mnt/storage/data/am-en/afridoc/health/validation.en",
+            "test": "/mnt/storage/data/am-en/afridoc/health/validation.en",
             "encipherment": "0",
             "tokenizer": "nllb"
         },
         "wmt-am": {
             "lang_code": "amh_Ethi",
-            "train": "/mnt/storage/data/am-en/afridoc/train.health.am",
-            "dev": "/mnt/storage/data/am-en/afridoc/validation.health.am",
-            "test": "data/afridoc/reorganized/validation.health.am",
+            "train": "/mnt/storage/data/am-en/afridoc/health/train.am",
+            "dev": "/mnt/storage/data/am-en/afridoc/health/validation.am",
+            "test": "/mnt/storage/data/am-en/afridoc/health/validation.am",
             "encipherment": "0",
             "tokenizer": "nllb"
         }

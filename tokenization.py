@@ -1,9 +1,9 @@
 import sys
-from transformers import AutoTokenizer
-from typing import Dict, Tuple, List, Optional, Iterator, Callable
+from typing import Dict, List, Optional
 import warnings
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+
+import torch
 
 
 class Tokenizer(ABC):
@@ -12,7 +12,7 @@ class Tokenizer(ABC):
         pass
 
     @abstractmethod
-    def __call__(self, sents: List[str]):
+    def __call__(self, sents):
         pass
 
     @abstractmethod
@@ -20,62 +20,88 @@ class Tokenizer(ABC):
         pass
 
     @abstractmethod
-    def batch_decode(self):
+    def batch_decode(self, token_ids):
         pass
 
 
-class HuggingfaceTokenizer(Tokenizer):
+class SentencePieceTokenizer(Tokenizer):
+    """Wraps a trained SentencePiece model.
 
-    def __init__(self, model_name, max_length=None):
-        self.max_length = max_length
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message="`clean_up_tokenization_spaces` was not set.*",
-                category=FutureWarning,
-                module="transformers.tokenization_utils_base",
+    Config format (in experiment JSON):
+        {
+            "type": "sentencepiece",
+            "model": "path/to/spm.model",
+            "max_length": 192,
+            "special_tokens": {
+                "<pad>":   0,
+                "</s>":    1,
+                "eng_Latn": 2,
+                "amh_Ethi": 3
+            }
+        }
+
+    The special_tokens dict maps token names to IDs that are reserved
+    OUTSIDE the SentencePiece vocabulary (prepended/appended manually).
+    All IDs listed here are skipped during batch_decode.
+
+    The SentencePiece model must be trained so that its IDs do NOT overlap
+    with the special_token IDs (e.g. offset the SP vocab by
+    len(special_tokens), or train with --pad_id / --eos_id / --bos_id
+    set to the reserved values).
+    """
+
+    def __init__(
+        self,
+        model_path: str,
+        max_length: Optional[int] = None,
+        special_tokens: Optional[Dict[str, int]] = None,
+        vocab_offset: int = 0,
+    ):
+        try:
+            import sentencepiece as spm
+        except ImportError:
+            raise ImportError(
+                "sentencepiece is required for SentencePieceTokenizer. "
+                "Install with: pip install sentencepiece"
             )
-            try:
-                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            except OSError:
-                sys.stderr.write("Tokenizer not found. Using NLLB tokenizer instead.\n")
-                sys.stderr.flush()
-                self.tokenizer = AutoTokenizer.from_pretrained(
-                    "facebook/nllb-200-distilled-600M"
-                )
-        self.special_tokens = dict(
-            zip(self.tokenizer.all_special_tokens, self.tokenizer.all_special_ids)
-        )
+        self.sp = spm.SentencePieceProcessor()
+        self.sp.Load(model_path)
+        self.max_length = max_length
+        self.vocab_offset = vocab_offset
+        self._special_tokens: Dict[str, int] = special_tokens or {}
+        self._skip_ids = set(self._special_tokens.values())
+        self._eos_id = self._special_tokens.get("</s>", self.sp.eos_id())
 
     def __len__(self):
-        return len(self.tokenizer)
+        return self.sp.GetPieceSize()
 
-    def __call__(self, sents: List[str], lang_code=None):
-        if lang_code is not None:
-            self.tokenizer.src_lang = lang_code
-        result = self.tokenizer(
-            sents,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=self.max_length if self.max_length is not None else None,
-        )
-        retval = result["input_ids"].squeeze().tolist()
-        return retval
+    def __call__(self, sent: str, lang_code: Optional[str] = None) -> List[int]:
+        ids = [i + self.vocab_offset for i in self.sp.EncodeAsIds(sent)]
+        if lang_code is not None and lang_code in self._special_tokens:
+            ids = [self._special_tokens[lang_code]] + ids
+        ids = ids + [self._eos_id]
+        if self.max_length is not None and len(ids) > self.max_length:
+            ids = ids[: self.max_length - 1] + [self._eos_id]
+        return ids
 
-    def get_special_tokens(self):
-        return self.special_tokens
+    def get_special_tokens(self) -> Dict[str, int]:
+        return self._special_tokens
 
-    def batch_decode(self, token_ids):
-        return self.tokenizer.batch_decode(token_ids, skip_special_tokens=True)
+    def batch_decode(self, token_ids) -> List[str]:
+        results = []
+        for seq in token_ids:
+            if isinstance(seq, torch.Tensor):
+                seq = seq.tolist()
+            filtered = [
+                t - self.vocab_offset
+                for t in seq
+                if t not in self._skip_ids and t >= 0 and t - self.vocab_offset > 0
+            ]
+            results.append(self.sp.DecodeIds(filtered))
+        return results
 
-    def convert_ids_to_tokens(self, ids):
-        return self.tokenizer.convert_ids_to_tokens(ids)
-
-
-class NllbTokenizer(HuggingfaceTokenizer):
-    def __init__(self, size, max_length=None):
-        super().__init__(f"facebook/nllb-200-distilled-{size}", max_length=max_length)
+    def convert_ids_to_tokens(self, ids: List[int]) -> List[str]:
+        return [self.sp.IdToPiece(i - self.vocab_offset) for i in ids]
 
 
 class ByteTokenizer(Tokenizer):
@@ -87,10 +113,7 @@ class ByteTokenizer(Tokenizer):
         tokens = [byte + len(self.special_tokens) for byte in sent.encode()]
         if self.max_length is not None and len(tokens) > self.max_length - 2:
             tokens = tokens[: self.max_length - 2]
-        result = (
-            [self.special_tokens[lang_code]] + tokens + [self.special_tokens["</s>"]]
-        )
-        return result
+        return [self.special_tokens[lang_code]] + tokens + [self.special_tokens["</s>"]]
 
     def __len__(self):
         return 256 + len(self.special_tokens)
@@ -100,19 +123,3 @@ class ByteTokenizer(Tokenizer):
 
     def batch_decode(self, token_ids):
         pass
-
-    #     results = []  # list of strings, each of which is decoded sentence
-
-    #     non_printables = set(self.special_tokens)
-
-    #     for sent in token_ids:
-    #         # Convert all token IDs in one go
-    #         decoded_tokens = [self.reverse_mappings[id.item()] for id in sent]
-
-    #         # Filter out special tokens and make string representation
-    #         decoded = " ".join(
-    #             tok for tok in decoded_tokens if tok not in non_printables
-    #         )
-    #         results.append(decoded)
-
-    #     return results

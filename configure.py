@@ -9,8 +9,7 @@ from permutations import (
     load_permutation_map,
 )
 import shutil
-from tokenization import NllbTokenizer, HuggingfaceTokenizer, ByteTokenizer
-from transformers import AutoTokenizer
+from tokenization import SentencePieceTokenizer, ByteTokenizer
 from corpora import (
     Corpus,
     TokenizedCorpus,
@@ -41,6 +40,10 @@ class FinetuningParameters:
     lora_alpha: int
     lora_dropout: float
     lora_target_modules: list
+    use_prefix_tuning: bool
+    prefix_num_virtual_tokens: int
+    prefix_encoder_hidden_size: int
+    prefix_projection: bool
 
 
 def read_finetuning_params(config):
@@ -48,7 +51,7 @@ def read_finetuning_params(config):
     params = config["finetuning_parameters"]
     f_params = FinetuningParameters(
         base_model=params["base_model"],
-        should_finetune=params.get("finetune", True),
+        should_finetune=params.get("init_w_pretrained_weights", True),
         report_every=params.get("report_every", 500),
         validate_every=params.get("validate_every", 500),
         patience=params.get("patience", 1000000000),
@@ -66,6 +69,10 @@ def read_finetuning_params(config):
         lora_target_modules=params.get(
             "lora_target_modules", ["q_proj", "k_proj", "v_proj", "out_proj"]
         ),
+        use_prefix_tuning=params.get("use_prefix_tuning", False),
+        prefix_num_virtual_tokens=params.get("prefix_num_virtual_tokens", 30),
+        prefix_encoder_hidden_size=params.get("prefix_encoder_hidden_size", 512),
+        prefix_projection=params.get("prefix_projection", True),
     )
     return f_params
 
@@ -91,18 +98,22 @@ def harvest_language_codes(config):
     return lang_codes
 
 
-# TODO: update
 def initialize_tokenizer(config):
-    # TODO: generalize to separate src/tgt tokenizers
     params = config["finetuning_parameters"]
-    model_name = params["base_model"]
-    if model_name == "facebook/nllb-200-distilled-600M":
-        tokenizer = NllbTokenizer("600M", max_length=128)  # set max length?
-    elif model_name == "facebook/nllb-200-distilled-1.3B":
-        tokenizer = NllbTokenizer("1.3B", max_length=128)
-    else:
-        tokenizer = HuggingfaceTokenizer(model_name, max_length=128)
-    return tokenizer
+    tokenizer_configs = config.get("tokenizers", {})
+    if tokenizer_configs:
+        first_key = next(iter(tokenizer_configs))
+        tc = tokenizer_configs[first_key]
+        if tc["type"] == "sentencepiece":
+            return SentencePieceTokenizer(
+                tc["model"],
+                max_length=tc.get("max_length"),
+                special_tokens=tc.get("special_tokens"),
+                vocab_offset=tc.get("vocab_offset", 0),
+            )
+        if tc["type"] == "byte":
+            return ByteTokenizer(max_length=tc.get("max_length"))
+    raise ValueError("Cannot initialize tokenizer: no recognized tokenizer config found.")
 
 
 def create_ciphers(config, tokenizer_map):
@@ -128,9 +139,12 @@ def create_bitexts(config, cipher_map=None):
     tokenizer_map = dict()
     for tokenizer_name in config["tokenizers"]:
         tokenizer_config = config["tokenizers"][tokenizer_name]
-        if tokenizer_config["type"] == "huggingface":
-            tokenizer = HuggingfaceTokenizer(
-                tokenizer_config["model"], max_length=tokenizer_config["max_length"]
+        if tokenizer_config["type"] == "sentencepiece":
+            tokenizer = SentencePieceTokenizer(
+                tokenizer_config["model"],
+                max_length=tokenizer_config["max_length"],
+                special_tokens=tokenizer_config.get("special_tokens"),
+                vocab_offset=tokenizer_config.get("vocab_offset", 0),
             )
         elif tokenizer_config["type"] == "byte":
             tokenizer = ByteTokenizer(max_length=tokenizer_config["max_length"])

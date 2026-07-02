@@ -4,9 +4,8 @@ from configure import create_bitexts_from_experiment_dir
 from configure import USE_CUDA
 import evaluate
 import json
-from myutil import logger
+from myutil import load_model_for_inference, logger
 from pathlib import Path
-from transformers import AutoModelForSeq2SeqLM
 from tqdm import tqdm
 import torch
 
@@ -117,7 +116,7 @@ def run_evaluation(bitexts, model_name_or_path, out_dir, suffix=""):
     """Translates and scores a model's test-set output, writing results into out_dir."""
     logger(f"Initializing model: {model_name_or_path}")
     use_fp16 = torch.cuda.is_available()
-    model = AutoModelForSeq2SeqLM.from_pretrained(
+    model = load_model_for_inference(
         model_name_or_path, torch_dtype=torch.float16 if use_fp16 else torch.float32
     )
     if USE_CUDA:
@@ -155,8 +154,8 @@ def run_evaluation(bitexts, model_name_or_path, out_dir, suffix=""):
 def evaluate_experiment(experiment_dir, model_name=None, eval_batch_size=None):
     """Evaluates a finetuning experiment. By default, evaluates the experiment's
     own finetuned checkpoint; pass model_name to instead evaluate some other
-    HuggingFace model (e.g. the un-finetuned base model) against the same test
-    data, writing its outputs alongside the experiment's under a model-specific
+    model (e.g. the un-finetuned base model) against the same test data,
+    writing its outputs alongside the experiment's under a model-specific
     suffix so they don't clobber the experiment's own results."""
     bitexts = create_bitexts_from_experiment_dir(
         experiment_dir, eval_batch_size=eval_batch_size

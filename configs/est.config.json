@@ -2,7 +2,7 @@
     "model_dir": "experiments/enciphered_spa_to_spa",
     "finetuning_parameters": {
         "base_model": "facebook/nllb-200-distilled-600M",
-        "finetune": true,
+        "init_w_pretrained_weights": true,
         "freeze_encoder": false,
         "freeze_decoder": true,
         "batch_size": 32,

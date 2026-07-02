@@ -7,24 +7,23 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import torch
 from tqdm import tqdm
-from transformers import AutoModelForSeq2SeqLM
-from tokenization import HuggingfaceTokenizer
+from myutil import load_model_for_inference
+from tokenization import SentencePieceTokenizer
 from validate import translate
 
 
 def translate_corpus(model, tokenizer, lines, src_lang, tgt_lang, batch_size, num_beams):
     """Translates a plain-text corpus, one sentence per line, in batches."""
-    tokenizer.tokenizer.src_lang = src_lang
     translations = []
     for i in tqdm(range(0, len(lines), batch_size), desc="Translating"):
         batch = lines[i : i + batch_size]
-        encoded = tokenizer.tokenizer(
-            batch,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=tokenizer.max_length,
-        )
+        src_ids = [tokenizer(sent, lang_code=src_lang) for sent in batch]
+        max_len = max(len(ids) for ids in src_ids)
+        pad_id = list(tokenizer.get_special_tokens().values())[0]  # first special token as pad
+        padded = [ids + [pad_id] * (max_len - len(ids)) for ids in src_ids]
+        input_ids = torch.tensor(padded, dtype=torch.long)
+        attention_mask = (input_ids != pad_id).int()
+        encoded = {"input_ids": input_ids, "attention_mask": attention_mask}
         translations.extend(
             translate(encoded, tokenizer, model, tgt_lang, num_beams=num_beams)
         )
@@ -44,13 +43,34 @@ def write_jsonl(path_or_writer, records):
 def main():
     parser = argparse.ArgumentParser(
         description="Translates a plain-text corpus (one sentence per line) "
-        "with either a finetuned experiment or an off-the-shelf HuggingFace model."
+        "with a finetuned experiment checkpoint."
     )
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument(
         "--dir", type=str, help="Experiment directory with a finetuned checkpoint."
     )
-    source.add_argument("--model", type=str, help="HuggingFace model name or path.")
+    source.add_argument("--model", type=str, help="Path to a saved model directory.")
+    parser.add_argument(
+        "--tokenizer",
+        type=str,
+        required=True,
+        help="Path to a SentencePiece model file (.model).",
+    )
+    parser.add_argument(
+        "--special-tokens",
+        type=str,
+        default=None,
+        help="JSON object mapping special token names (e.g. '<pad>', '</s>', "
+        "and language codes like 'eng_Latn') to reserved ids, matching the "
+        "'special_tokens' entry of the tokenizer's experiment config.",
+    )
+    parser.add_argument(
+        "--vocab-offset",
+        type=int,
+        default=0,
+        help="Offset added to SentencePiece ids to make room for special "
+        "tokens, matching the tokenizer's experiment config.",
+    )
     parser.add_argument(
         "--input",
         type=str,
@@ -75,13 +95,19 @@ def main():
 
     model_name_or_path = args.dir if args.dir is not None else args.model
     use_fp16 = torch.cuda.is_available()
-    model = AutoModelForSeq2SeqLM.from_pretrained(
+    model = load_model_for_inference(
         model_name_or_path, torch_dtype=torch.float16 if use_fp16 else torch.float32
     )
     if torch.cuda.is_available():
         model.cuda()
 
-    tokenizer = HuggingfaceTokenizer(model_name_or_path, max_length=args.max_length)
+    special_tokens = json.loads(args.special_tokens) if args.special_tokens else None
+    tokenizer = SentencePieceTokenizer(
+        args.tokenizer,
+        max_length=args.max_length,
+        special_tokens=special_tokens,
+        vocab_offset=args.vocab_offset,
+    )
 
     is_jsonl = args.input.endswith(".jsonl")
 

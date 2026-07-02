@@ -1,17 +1,19 @@
 {
-    "model_dir": "experiments/en-am-nllb-1.3B",
+    "model_dir": "experiments/en-am-nllb-1.3B-ptune",
     "finetuning_parameters": {
         "base_model": "facebook/nllb-200-distilled-1.3B",
         "init_w_pretrained_weights": true,
-        "freeze_encoder": false,
-        "freeze_decoder": false,
-        "report_every": 20,
-        "validate_every": 20,
-        "batch_size": 16,
-        "eval_batch_size": 16,
-        "src_pad_id": 1,
+        "report_every": 200,
+        "validate_every": 200,
+        "batch_size": 8,
+        "eval_batch_size": 8,
+        "src_pad_id": 0,
         "tgt_pad_id": -100,
-        "num_steps": 1500
+        "num_steps": 6000,
+        "use_prefix_tuning": true,
+        "prefix_num_virtual_tokens": 30,
+        "prefix_encoder_hidden_size": 512,
+        "prefix_projection": true
     },
     "tokenizers": {
         "nllb": {

@@ -15,8 +15,6 @@ from pathlib import Path
 from permutations import save_permutation_map
 import torch
 from tqdm import tqdm
-from transformers import Adafactor
-from transformers import get_constant_schedule_with_warmup
 from validate import evaluate_experiment
 
 matplotlib.use("Agg")
@@ -40,26 +38,23 @@ def finetune(model, train_data, dev_data, model_dir, ft_params):
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
     if ft_params.should_finetune:
-        optimizer = Adafactor(
+        optimizer = torch.optim.AdamW(
             [p for p in model.parameters() if p.requires_grad],
-            scale_parameter=False,
-            relative_step=False,
             lr=1e-4,
-            clip_threshold=1.0,
             weight_decay=1e-3,
         )
-
         num_warmup_steps = int(0.05 * ft_params.num_training_steps)
-        scheduler = get_constant_schedule_with_warmup(
-            optimizer, num_warmup_steps=num_warmup_steps
+
+        def _warmup_lambda(step):
+            return min(1.0, step / max(1, num_warmup_steps))
+
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lr_lambda=_warmup_lambda
         )
     else:
-        optimizer = Adafactor(
-            model.parameters(),
-            scale_parameter=True,
-            relative_step=True,
-            lr=None,
-            clip_threshold=1.0,
+        optimizer = torch.optim.AdamW(
+            [p for p in model.parameters() if p.requires_grad],
+            lr=1e-3,
             weight_decay=0.01,
         )
         scheduler = None

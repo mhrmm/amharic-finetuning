@@ -2,7 +2,7 @@
     "model_dir": "experiments/zh-en-byte",
     "finetuning_parameters": {
         "base_model": "facebook/nllb-200-distilled-600M",
-        "finetune": false,
+        "init_w_pretrained_weights": false,
         "freeze_encoder": false,
         "freeze_decoder": false,
         "report_every": 10000,

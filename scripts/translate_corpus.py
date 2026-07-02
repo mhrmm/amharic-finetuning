@@ -57,6 +57,21 @@ def main():
         help="Path to a SentencePiece model file (.model).",
     )
     parser.add_argument(
+        "--special-tokens",
+        type=str,
+        default=None,
+        help="JSON object mapping special token names (e.g. '<pad>', '</s>', "
+        "and language codes like 'eng_Latn') to reserved ids, matching the "
+        "'special_tokens' entry of the tokenizer's experiment config.",
+    )
+    parser.add_argument(
+        "--vocab-offset",
+        type=int,
+        default=0,
+        help="Offset added to SentencePiece ids to make room for special "
+        "tokens, matching the tokenizer's experiment config.",
+    )
+    parser.add_argument(
         "--input",
         type=str,
         required=True,
@@ -86,7 +101,13 @@ def main():
     if torch.cuda.is_available():
         model.cuda()
 
-    tokenizer = SentencePieceTokenizer(args.tokenizer, max_length=args.max_length)
+    special_tokens = json.loads(args.special_tokens) if args.special_tokens else None
+    tokenizer = SentencePieceTokenizer(
+        args.tokenizer,
+        max_length=args.max_length,
+        special_tokens=special_tokens,
+        vocab_offset=args.vocab_offset,
+    )
 
     is_jsonl = args.input.endswith(".jsonl")
 
